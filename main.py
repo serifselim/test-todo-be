@@ -5,6 +5,9 @@ from datetime import datetime
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+import os
+
 
 app = FastAPI()
 
@@ -17,7 +20,8 @@ app.add_middleware(
 )
 
 # BURAYA KENDİ CONNECTION STRING'İNİ YAPIŞTIR
-DATABASE_URL = "postgresql+psycopg2://postgres.tkwymbbimbjivwzgmwdm:NEWorleans1903__@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres?sslmode=require"
+load_dotenv()
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
