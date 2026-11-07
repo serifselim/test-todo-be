@@ -1,3 +1,5 @@
+from http import client
+
 from fastapi import FastAPI, Depends
 from pydantic import BaseModel, Field
 from typing import Optional
@@ -6,8 +8,8 @@ from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+from groq import Groq
 import os
-
 
 app = FastAPI()
 
@@ -21,6 +23,7 @@ app.add_middleware(
 
 # BURAYA KENDİ CONNECTION STRING'İNİ YAPIŞTIR
 load_dotenv()
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 engine = create_engine(DATABASE_URL)
@@ -35,6 +38,9 @@ class TodoDB(Base):
     description = Column(String, nullable=True)
     completed = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class SuggestRequest(BaseModel):
+    topic: str
 
 # Tabloyu otomatik oluştur
 Base.metadata.create_all(bind=engine)
@@ -56,9 +62,17 @@ class Todo(BaseModel):
     class Config:
         from_attributes = True
 
-@app.get("/")
-def read_root():
-    return {"message": "Merhaba Hocam"}
+@app.post("/suggest")
+def suggest_todos(req: SuggestRequest):
+    response = client.chat.completions.create(
+        model="openai/gpt-oss-20b",
+        messages=[
+            {"role": "system", "content": "Sen bir yardımcı asistansın. Kullanıcının verdiği konuyla ilgili 5 adet kısa ve net todo önerisi üret. Sadece liste halinde yaz, başka bir şey ekleme."},
+            {"role": "user", "content": req.topic}
+        ]
+    )
+    suggestions = response.choices[0].message.content
+    return {"suggestions": suggestions}
 
 @app.get("/todos")
 def get_todos(db: Session = Depends(get_db)):
